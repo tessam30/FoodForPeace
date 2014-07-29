@@ -1,0 +1,97 @@
+/*-------------------------------------------------------------------------------
+# Name:		01_ETL
+# Purpose:	Create series of folders Food for Peace Time Animated Maps & Analysis
+# Author:	Tim Essam, Ph.D.
+# Created:	07/23/2014
+# Owner:	USAID GeoCenter | OakStream Systems, LLC
+# License:	MIT License
+# Ado(s):	strReplace
+#-------------------------------------------------------------------------------
+*/
+
+clear
+capture log close
+
+import delimited "$pathin/FFP 60th Country Data 7.28.csv"
+
+* Fix Kosovo and Serbia country codes
+replace iso_num = 381 if countrycode == "KV"
+replace iso_num = 688 if countrycode == "RB"
+
+* Fix three countries w/out codes
+replace iso_num = 344 if country == "Hong Kong"
+replace iso_alpha3 = "MAC" if country== "Hong Kong"
+replace iso_alpha2 = "MO" if country == "Hong Kong"
+
+replace iso_num = 446 if country == "Macau"
+replace iso_alpha3 = "HKG" if country== "Macau"
+replace iso_alpha2 = "HK" if country == "Macau"
+
+replace iso_num = 654 if country == "St. Helena"
+replace iso_alpha3 = "SHN" if country== "St. Helena"
+replace iso_alpha2 = "SH" if country == "St. Helena"
+
+
+* Call strReplace_FFP
+strReplace_FFP title_i title_ii_em title_ii_dev title_iii title_iv b lrp_pilot mcg_dole beht_fswr ffp total
+format title_i title_ii_em title_ii_dev title_iii title_iv b lrp_pilot mcg_dole beht_fswr ffp total %16.0gc
+
+* Verfiy that all other figures match total
+egen double total_check = rowtotal(title_i title_ii_em title_ii_dev title_iii title_iv b lrp_pilot mcg_dole beht_fswr ffp), mi
+format total_check %16.0gc
+g byte total_valid = (total == total_check) if total!=. & total_check!=.
+
+* Tabulate data and check mis-validated totals
+tab total_valid, mi
+
+* Create variable labels for different titles
+la var title_i "Title I: Economic Assistance and Food Security"
+la var title_ii_em "Title II: Emergency Assistance Programs"
+la var title_ii_dev "Title II: Delopment Food Assistance Programs"
+la var title_iii "Title III: Food for Development"
+la var title_iv "Title IV: General Authorities and Requirements"
+la var b "Section 416(b)"
+la var lrp_pilot "Local and Regional Procurement Pilot"
+la var mcg_dole "McGovern-Dole International Food for Education and Child Nutrition Program" 
+la var beht_fswr "Title V: John Ogonowski and Doug Bereuter Farmer-to-Farmer (F2F) Program"
+la var ffp "Unsure -- FIX ME!!!"
+
+
+* For now drop missing ISO records
+drop if iso_num ==.
+bysort iso_num year: gen id = _n
+
+/* Countries with duplicate
+Iraq 368
+Seychelles  690
+TRINIDAD AND TOBAGO 780
+*/
+
+* Write a loop to fix three problem countries. Check totals before/after to ensure valid removal filters
+foreach x of numlist 368 690 780 {
+	*tab year if iso_num==`x'
+	egen tmpCheck`x' = total(total) if iso_num==`x'
+	drop if iso_num == `x' & total==. & id == 2
+	egen tmp = total(id) if iso_num == `x', by(year) 
+	drop if iso_num == `x' & total ==. & tmp ==3
+	drop tmp
+	*tab year if iso_num==`x'
+	egen tmpCheck2`x' = total(total) if iso_num==`x'
+	g byte check`x' = (tmpCheck2`x' == tmpCheck`x')
+	drop tmpCheck2`x' tmpCheck`x'
+	tab check`x' 
+	}
+*end
+
+isid iso_num year
+
+* Create a rank for Title I spending
+egen rank_title_i = rank(title_i), by(year) f
+
+* Create a rank for total FFP
+egen rank_total = rank(total), by(year) f
+
+twoway (scatter total year if rank_total == 1)
+
+* Conduct outlier tests to flag extreme values
+
