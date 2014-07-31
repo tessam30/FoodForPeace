@@ -1,0 +1,40 @@
+# Food For peace data exploration using ggvis
+rm( list=ls())
+
+LibCheck <- 'C:/Users/t/Box Sync/R/functions/LibCheck.txt'
+
+# Check if the required libraries exist, if not install them 
+required_lib =c("dplyr", "ggvis", "ggplot2", "lubridate", "foreign")
+
+# Source (call) the check library function
+source(LibCheck)
+
+# Import the data from stata
+setwd("C:/Users/t/Box Sync/FoodForPeace/Dataout/")
+d <- read.dta("FTF_processed.dta")
+
+# Declear year var
+d$year <- format(d$year, format = "%Y")
+
+# Create a spaghetti plot of all countries for all years
+p <-ggplot(d, aes (x = year, y = total_check_2013, colour = countryname)) + geom_line()
+
+# Use as a dplyr dataset
+dd <- tbl_df(d)
+
+b <- filter(dd, countryname != "India")
+newb <- b[!is.na(b$total_check_2013), ]
+
+ggplot(b, aes(x = year, y = total_check_2013, colour = countryname)) + geom_point()
+
+
+filter(dd, countryname !="Ind") %>% 
+  filter(!is.na(total)) %>%
+  ggvis(x = ~year, y = ~ total, size = ~ total) %>%
+  layer_points() %>%
+  #layer_smooths() %>%
+  add_axis("x", properties = axis_props(
+    labels = list(angle = 90, align = "left", fontSize = 10))) %>%
+  add_tooltip(function(dd){dd$total}, "hover")
+
+
