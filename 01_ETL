@@ -31,15 +31,18 @@ replace iso_num = 654 if country == "St. Helena"
 replace iso_alpha3 = "SHN" if country== "St. Helena"
 replace iso_alpha2 = "SH" if country == "St. Helena"
 
-
 * Call strReplace_FFP
 strReplace_FFP title_i title_ii_em title_ii_dev title_iii title_iv b lrp_pilot mcg_dole beht_fswr ffp total
 format title_i title_ii_em title_ii_dev title_iii title_iv b lrp_pilot mcg_dole beht_fswr ffp total %16.0gc
 
+* Fix Costa Rica and Greece
+replace title_i = 15000000 if countryname=="Costa Rica" & year == 1992
+replace title_iii = 3562000 if countryname=="Greece" & year ==1964
+
 * Verfiy that all other figures match total
 egen double total_check = rowtotal(title_i title_ii_em title_ii_dev title_iii title_iv b lrp_pilot mcg_dole beht_fswr ffp), mi
 format total_check %16.0gc
-g byte total_valid = (total == total_check) if total!=. & total_check!=.
+labgen2 byte total_valid "Total aggregates that match" = (total == total_check) if total!=. & total_check!=.
 
 * Tabulate data and check mis-validated totals
 tab total_valid, mi
@@ -75,6 +78,7 @@ foreach x of numlist 368 690 780 {
 	egen tmp = total(id) if iso_num == `x', by(year) 
 	drop if iso_num == `x' & total ==. & tmp ==3
 	drop tmp
+	
 	*tab year if iso_num==`x'
 	egen tmpCheck2`x' = total(total) if iso_num==`x'
 	g byte check`x' = (tmpCheck2`x' == tmpCheck`x')
@@ -85,13 +89,50 @@ foreach x of numlist 368 690 780 {
 
 isid iso_num year
 
-* Create a rank for Title I spending
-egen rank_title_i = rank(title_i), by(year) f
+* Create ranks for all spending
+local titles title_i title_ii_em title_ii_dev title_iii title_iv b lrp_pilot mcg_dole ffp total total_check 
+foreach x of local titles  {
+	egen rank_`x' = rank(`x'), by(year) f
+}
+*end
+set more on
+local titles title_i title_ii_em title_ii_dev title_iii title_iv b lrp_pilot mcg_dole ffp total total_check
+qui foreach x of local titles {
+	*scatter `x' year if rank_`x' == 1, mlabel(countryname) title("`x'") scheme(burd9)
+	*more
+	}
+	*
+merge m:m year using "$pathin\cpi.dta"
+	
+*Create adjusted figures to 2013 Dollars
+local titles title_i title_ii_em title_ii_dev title_iii title_iv b lrp_pilot mcg_dole ffp total total_check 
+foreach x of local titles {
+		g double `x'_2013 = round((`x'/cpi_2013)*100)
+		g double ln`x'_2013 = round((`x'/cpi_2013)*100)
+		replace ln`x'_2013 = ln(ln`x'_2013)
+		copydesc `x' `x'_2013 
+		copydesc `x' ln`x'_2013
+		*format `x'_2013 %16.0gc
+	}
+*End
 
-* Create a rank for total FFP
-egen rank_total = rank(total), by(year) f
+* Generate a report of the top 3 values for each year
+preserve
+	keep if rank_total_check <=5
+	keep countryname year rank_total_check title_i title_ii_em title_ii_dev title_iii title_iv b lrp_pilot mcg_dole beht_fswr ffp total_check total
+	*keep countryname year rank_total lntitle_i_2013 lntitle_ii_em_2013 lntitle_ii_dev_2013 lntitle_iii_2013 lntitle_iv_2013 lnb_2013 lnlrp_pilot_2013 lnmcg_dole_2013 lnffp_2013 lntotal_2013
+	order countryname year rank_total_check total_check total
+	export excel using "$pathxls\FFP_outliers.xls", sheet("Outliers") firstrow(variables) replace
+restore
 
-twoway (scatter total year if rank_total == 1)
-
-* Conduct outlier tests to flag extreme values
-
+* Export all observations for which reported total does not match calculated total
+preserve
+	keep if total_valid==0
+	keep countryname year title_i title_ii_em title_ii_dev title_iii title_iv b lrp_pilot mcg_dole beht_fswr ffp total_check total
+	order countryname year total_check total
+	export excel using "$pathxls/FFP_outliers.xls", sheet("Totals_Different") firstrow(variables) sheetmodify
+restore
+	
+* Export a copy of the data to R for playing in GGplot anad GGVIS
+save "$pathout/FTF_processed.dta", replace 
+saveold "$pathout/FTF_processed.dta", replace
