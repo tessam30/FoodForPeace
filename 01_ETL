@@ -20,12 +20,12 @@ replace iso_num = 688 if countrycode == "RB"
 
 * Fix three countries w/out codes
 replace iso_num = 344 if country == "Hong Kong"
-replace iso_alpha3 = "MAC" if country== "Hong Kong"
-replace iso_alpha2 = "MO" if country == "Hong Kong"
+replace iso_alpha3 = "HKG" if country== "Hong Kong"
+replace iso_alpha2 = "HK" if country == "Hong Kong"
 
 replace iso_num = 446 if country == "Macau"
-replace iso_alpha3 = "HKG" if country== "Macau"
-replace iso_alpha2 = "HK" if country == "Macau"
+replace iso_alpha3 = "MAC" if country== "Macau"
+replace iso_alpha2 = "MO" if country == "Macau"
 
 replace iso_num = 654 if country == "St. Helena"
 replace iso_alpha3 = "SHN" if country== "St. Helena"
