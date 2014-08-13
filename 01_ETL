@@ -8,11 +8,17 @@
 # Ado(s):	strReplace
 #-------------------------------------------------------------------------------
 */
-
 clear
 capture log close
 
-import delimited "$pathin/FFP 60th Country Data 7.28.csv"
+import delimited "$pathin/FFP 60th Country Data Pull_8.7.csv"
+
+***NOTES***
+* France 1955 is missing information
+* DRC 1964 beht_fswr is beht_fswr $3,363,000,000
+* Tanzania 1964 beht_fswr $1,268,000,000
+* Togo 1964 beht_fswr 573000000
+************
 
 * Fix Kosovo and Serbia country codes
 replace iso_num = 381 if countrycode == "KV"
@@ -57,14 +63,14 @@ la var b "Section 416(b)"
 la var lrp_pilot "Local and Regional Procurement Pilot"
 la var mcg_dole "McGovern-Dole International Food for Education and Child Nutrition Program" 
 la var beht_fswr "Title V: John Ogonowski and Doug Bereuter Farmer-to-Farmer (F2F) Program"
-la var ffp "Unsure -- FIX ME!!!"
+la var ffp "Food for Peace"
 
 
 * For now drop missing ISO records
 drop if iso_num ==.
 bysort iso_num year: gen id = _n
 
-/* Countries with duplicate
+/* Countries with duplicate information
 Iraq 368
 Seychelles  690
 TRINIDAD AND TOBAGO 780
@@ -74,9 +80,9 @@ TRINIDAD AND TOBAGO 780
 foreach x of numlist 368 690 780 {
 	*tab year if iso_num==`x'
 	egen tmpCheck`x' = total(total) if iso_num==`x'
-	drop if iso_num == `x' & total==. & id == 2
+	drop if iso_num == `x' & total==0 & id == 2
 	egen tmp = total(id) if iso_num == `x', by(year) 
-	drop if iso_num == `x' & total ==. & tmp ==3
+	drop if iso_num == `x' & total ==0 & tmp ==3
 	drop tmp
 	
 	*tab year if iso_num==`x'
@@ -101,7 +107,7 @@ qui foreach x of local titles {
 	*scatter `x' year if rank_`x' == 1, mlabel(countryname) title("`x'") scheme(burd9)
 	*more
 	}
-	*
+*
 merge m:m year using "$pathin\cpi.dta"
 	
 *Create adjusted figures to 2013 Dollars
@@ -114,9 +120,62 @@ foreach x of local titles {
 		copydesc `x' ln`x'_2013
 		*format `x'_2013 %16.0gc
 	}
-*End
+*end
+sort iso_num year
 
-* Generate a report of the top 3 values for each year
+* Generate running sum for adjusted and unadjusted totals
+bysort iso_num (year): gen cumTotal = sum(total)
+bysort iso_num (year): gen cumTotal2013 = sum(total_2013)
+
+*Generate natural logarithm for cumulative totals
+g lncumTotal2013 = ln(cumTotal2013)
+
+egen grandTot = total(total_2013), by(iso_num)
+egen annualTot = total(total_2013), by(year)
+
+g lngrantTot = ln(grandTot)
+g lnannualTot = ln(annualTot)
+
+g countryShare = cumTotal2013/grandTot
+g yearlyShare = total_2013/annualTot
+
+* Check to make sure everything is summing to 1
+assert countryShare==1 | countryShare==. if year==2013
+order ln*, last
+
+* Create ranks for all logged spending
+local titles title_i title_ii_em title_ii_dev title_iii title_iv b lrp_pilot mcg_dole ffp total total_check 
+foreach x of local titles  {
+	egen rank_ln`x' = rank(ln`x'_2013), by(year) f
+}
+*end
+
+
+local titles title_i title_ii_em title_ii_dev title_iii title_iv b lrp_pilot mcg_dole ffp total total_check
+qui foreach x of local titles {
+	scatter ln`x'_2013 year if rank_ln`x' <= 1, mlabel(countryname) mlabs(tiny) title("`x'") scheme(burd9) by(region)
+	more
+	}
+*
+
+*Create exploratory data analysis graphs
+encode country, gen(countryid)
+xtset countryid year
+
+set more on
+levelsof region, local(levels)
+foreach x of local levels {
+	xtline countryShare if region=="`x'", tlabel(#3) i(countryname) t(year)
+	*more
+	*xtline lncumTotal if region=="`x'", tlabel(#3) i(countryname) t(year)
+	more
+	}
+*end
+
+bob
+
+
+/* Generate a report of the top 3 values for each year
 preserve
 	keep if rank_total_check <=5
 	keep countryname year rank_total_check title_i title_ii_em title_ii_dev title_iii title_iv b lrp_pilot mcg_dole beht_fswr ffp total_check total
@@ -132,6 +191,7 @@ preserve
 	order countryname year total_check total
 	export excel using "$pathxls/FFP_outliers.xls", sheet("Totals_Different") firstrow(variables) sheetmodify
 restore
+*/
 	
 * Export a copy of the data to R for playing in GGplot anad GGVIS
 save "$pathout/FTF_processed.dta", replace 
