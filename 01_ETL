@@ -11,7 +11,7 @@
 clear
 capture log close
 
-import delimited "$pathin/FFP 60th Country Data Pull_8.7.csv"
+import delimited "$pathin/FFP 60th Country Data 8.11.csv"
 
 ***NOTES***
 * France 1955 is missing information
@@ -42,8 +42,8 @@ strReplace_FFP title_i title_ii_em title_ii_dev title_iii title_iv b lrp_pilot m
 format title_i title_ii_em title_ii_dev title_iii title_iv b lrp_pilot mcg_dole beht_fswr ffp total %16.0gc
 
 * Fix Costa Rica and Greece
-replace title_i = 15000000 if countryname=="Costa Rica" & year == 1992
-replace title_iii = 3562000 if countryname=="Greece" & year ==1964
+*replace title_i = 15000000 if countryname=="Costa Rica" & year == 1992
+*replace title_iii = 3562000 if countryname=="Greece" & year ==1964
 
 * Verfiy that all other figures match total
 egen double total_check = rowtotal(title_i title_ii_em title_ii_dev title_iii title_iv b lrp_pilot mcg_dole beht_fswr ffp), mi
@@ -52,6 +52,7 @@ labgen2 byte total_valid "Total aggregates that match" = (total == total_check) 
 
 * Tabulate data and check mis-validated totals
 tab total_valid, mi
+drop if total_valid==.
 
 * Create variable labels for different titles
 la var title_i "Title I: Economic Assistance and Food Security"
@@ -124,11 +125,11 @@ foreach x of local titles {
 sort iso_num year
 
 * Generate running sum for adjusted and unadjusted totals
-bysort iso_num (year): gen cumTotal = sum(total)
-bysort iso_num (year): gen cumTotal2013 = sum(total_2013)
+bysort iso_num (year): gen culmTotal = sum(total)
+bysort iso_num (year): gen culmTotal2013 = sum(total_2013)
 
-*Generate natural logarithm for cumulative totals
-g lncumTotal2013 = ln(cumTotal2013)
+*Generate natural logarithm for culmulative totals
+g lnculmTotal2013 = ln(culmTotal2013)
 
 egen grandTot = total(total_2013), by(iso_num)
 egen annualTot = total(total_2013), by(year)
@@ -136,8 +137,13 @@ egen annualTot = total(total_2013), by(year)
 g lngrantTot = ln(grandTot)
 g lnannualTot = ln(annualTot)
 
-g countryShare = cumTotal2013/grandTot
+* Create country's share for the year
+g countryShare = culmTotal2013/grandTot
+la var countryShare "Country's annual share of its total value (within)"
+
+* Create country's share for it's own history
 g yearlyShare = total_2013/annualTot
+la var yearlyShare "Country's annual share of overall value for year (between)"
 
 * Check to make sure everything is summing to 1
 assert countryShare==1 | countryShare==. if year==2013
@@ -149,7 +155,6 @@ foreach x of local titles  {
 	egen rank_ln`x' = rank(ln`x'_2013), by(year) f
 }
 *end
-
 
 local titles title_i title_ii_em title_ii_dev title_iii title_iv b lrp_pilot mcg_dole ffp total total_check
 qui foreach x of local titles {
@@ -167,7 +172,7 @@ levelsof region, local(levels)
 foreach x of local levels {
 	xtline countryShare if region=="`x'", tlabel(#3) i(countryname) t(year)
 	*more
-	*xtline lncumTotal if region=="`x'", tlabel(#3) i(countryname) t(year)
+	*xtline lnculmTotal if region=="`x'", tlabel(#3) i(countryname) t(year)
 	more
 	}
 *end
