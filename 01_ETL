@@ -13,6 +13,7 @@ capture log close
 
 import delimited "$pathin/FFP 60th Country Data 8.11.csv"
 
+
 ***NOTES***
 * France 1955 is missing information
 * DRC 1964 beht_fswr is beht_fswr $3,363,000,000
@@ -44,6 +45,31 @@ format title_i title_ii_em title_ii_dev title_iii title_iv b lrp_pilot mcg_dole 
 * Fix Costa Rica and Greece
 *replace title_i = 15000000 if countryname=="Costa Rica" & year == 1992
 *replace title_iii = 3562000 if countryname=="Greece" & year ==1964
+
+* Create a Yugoslavia entry for pre-1992 data; Post 1992 this will be null
+expand 2 if country=="SERBIA", generate(Yugoslavia)
+
+* Replace object id, country, countrycode, iso_alpha2, iso_alph3, iso_num
+* Guidance from: http://en.wikipedia.org/wiki/ISO_3166-3
+
+replace iso_num = 890 if Yugoslavia == 1 
+replace objectid = 9901 if Yugoslavia == 1
+replace country="YUGOSLAVIA" if Yugoslavia == 1
+replace countryname = "Yugoslavia" if Yugoslavia == 1
+replace iso_alpha2 = "YU"  if Yugoslavia == 1
+replace iso_alpha3 = "YUG" if Yugoslavia == 1
+replace countrycode = "YU" if Yugoslavia == 1 
+
+g byte notYugo = regexm(country, "(SERBIA|CROATIA|MACEDONIA|BOSNIA AND HERZEGOVINA|KOSOVO|MONTENEGRO|SLOVENIA)") ==1 & year<1992
+g byte oldYugo = regexm(country, "(SERBIA|CROATIA|MACEDONIA|BOSNIA AND HERZEGOVINA|KOSOVO|MONTENEGRO|SLOVENIA)") == 1 
+
+* Reset all values to zero if 
+local reset	title_i title_ii_em title_ii_dev title_iii title_iv b lrp_pilot mcg_dole beht_fswr ffp total
+foreach x of local reset {
+	replace `x' = 0 if notYugo==1 
+	replace `x' = 0 if country=="YUGOSLAVIA" & year>1991
+	}
+* //  
 
 * Verfiy that all other figures match total
 egen double total_check = rowtotal(title_i title_ii_em title_ii_dev title_iii title_iv b lrp_pilot mcg_dole beht_fswr ffp), mi
@@ -145,6 +171,10 @@ la var countryShare "Country's annual share of its total value (within)"
 g yearlyShare = total_2013/annualTot
 la var yearlyShare "Country's annual share of overall value for year (between)"
 
+* Create country's overall share of total pot
+egen overallTotal = total(total_2013)
+g overallShare = grandTot/overallTotal
+
 * Check to make sure everything is summing to 1
 assert countryShare==1 | countryShare==. if year==2013
 order ln*, last
@@ -167,6 +197,11 @@ qui foreach x of local titles {
 encode country, gen(countryid)
 xtset countryid year
 
+
+bob
+
+
+
 set more on
 levelsof region, local(levels)
 foreach x of local levels {
@@ -177,7 +212,6 @@ foreach x of local levels {
 	}
 *end
 
-bob
 
 
 /* Generate a report of the top 3 values for each year
