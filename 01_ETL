@@ -11,8 +11,8 @@
 clear
 capture log close
 
-import delimited "$pathin/FFP 60th Country Data 8.11.csv"
-
+*import delimited "$pathin/FFP 60th Country Data 8.11.csv"
+import delimited "$pathin/FFP 60th Country Data Pull_9.5.14.csv"
 
 ***NOTES***
 * France 1955 is missing information
@@ -37,6 +37,17 @@ replace iso_alpha2 = "MO" if country == "Macau"
 replace iso_num = 654 if country == "St. Helena"
 replace iso_alpha3 = "SHN" if country== "St. Helena"
 replace iso_alpha2 = "SH" if country == "St. Helena"
+
+
+* Fix Ireland
+replace objectid = 9902 if country == "Ireland"
+replace countrycode = "IE" if country == "Ireland"
+replace iso_alpha2 = "IE" if country == "Ireland"
+replace iso_alpha3 = "IRL" if country == "Ireland"
+replace iso_num = 372 if country == "Ireland"
+replace regioncap ="Europe-Sw Asia" if country == "Ireland"
+replace country = "IRELAND" if country == "Ireland"
+replace countryname = "Ireland" if country=="IRELAND"
 
 * Call strReplace_FFP
 strReplace_FFP title_i title_ii_em title_ii_dev title_iii title_iv b lrp_pilot mcg_dole beht_fswr ffp total
@@ -140,8 +151,8 @@ merge m:m year using "$pathin\cpi.dta"
 *Create adjusted figures to 2013 Dollars
 local titles title_i title_ii_em title_ii_dev title_iii title_iv b lrp_pilot mcg_dole ffp total total_check 
 foreach x of local titles {
-		g double `x'_2013 = round((`x'/cpi_2013)*100)
-		g double ln`x'_2013 = round((`x'/cpi_2013)*100)
+		g double `x'_2013 = round((`x'/cpi_2013)*100, 100)
+		g double ln`x'_2013 = round((`x'/cpi_2013)*100, 100)
 		replace ln`x'_2013 = ln(ln`x'_2013)
 		copydesc `x' `x'_2013 
 		copydesc `x' ln`x'_2013
@@ -197,11 +208,6 @@ qui foreach x of local titles {
 encode country, gen(countryid)
 xtset countryid year
 
-
-bob
-
-
-
 set more on
 levelsof region, local(levels)
 foreach x of local levels {
@@ -211,8 +217,6 @@ foreach x of local levels {
 	more
 	}
 *end
-
-
 
 /* Generate a report of the top 3 values for each year
 preserve
@@ -235,3 +239,5 @@ restore
 * Export a copy of the data to R for playing in GGplot anad GGVIS
 save "$pathout/FTF_processed.dta", replace 
 saveold "$pathout/FTF_processed.dta", replace
+
+export delimited using "$pathout\FFPdata0905.csv", delimiter(tab) replace
