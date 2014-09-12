@@ -74,6 +74,13 @@ replace countrycode = "YU" if Yugoslavia == 1
 g byte notYugo = regexm(country, "(SERBIA|CROATIA|MACEDONIA|BOSNIA AND HERZEGOVINA|KOSOVO|MONTENEGRO|SLOVENIA)") ==1 & year<1992
 g byte oldYugo = regexm(country, "(SERBIA|CROATIA|MACEDONIA|BOSNIA AND HERZEGOVINA|KOSOVO|MONTENEGRO|SLOVENIA)") == 1 
 
+* Fix values for Brazil 1980, Saint Lucia 1985, Republic of the Congo 1983, Uganda 1965 and Comoros 1983
+replace title_ii_em = 876000 if countryname == "Brazil" & year == 1980
+replace title_ii_em = 927000 if countryname == "Saint Lucia" & year == 1985
+replace title_ii_em = 155000 if countryname == "Uganda" & year == 1965
+replace title_ii_em = 394000 if countryname == "Comoros" & year == 1983
+replace title_ii_em = 25000 if countryname == "Republic Of The Congo" & year == 1983
+
 * Reset all values to zero if 
 local reset	title_i title_ii_em title_ii_dev title_iii title_iv b lrp_pilot mcg_dole beht_fswr ffp total
 foreach x of local reset {
@@ -102,7 +109,6 @@ la var lrp_pilot "Local and Regional Procurement Pilot"
 la var mcg_dole "McGovern-Dole International Food for Education and Child Nutrition Program" 
 la var beht_fswr "Title V: John Ogonowski and Doug Bereuter Farmer-to-Farmer (F2F) Program"
 la var ffp "Food for Peace"
-
 
 * For now drop missing ISO records
 drop if iso_num ==.
@@ -162,20 +168,20 @@ foreach x of local titles {
 sort iso_num year
 
 * Generate running sum for adjusted and unadjusted totals
-bysort iso_num (year): gen culmTotal = sum(total)
-bysort iso_num (year): gen culmTotal2013 = sum(total_2013)
+bysort iso_num (year): gen double culmTotal = sum(total)
+bysort iso_num (year): gen double culmTotal2013 = sum(total_2013)
 
 *Generate natural logarithm for culmulative totals
 g lnculmTotal2013 = ln(culmTotal2013)
 
-egen grandTot = total(total_2013), by(iso_num)
-egen annualTot = total(total_2013), by(year)
+egen double grandTot = total(total_2013), by(iso_num)
+egen double annualTot = total(total_2013), by(year)
 
-g lngrantTot = ln(grandTot)
-g lnannualTot = ln(annualTot)
+g double lngrantTot = ln(grandTot)
+g double lnannualTot = ln(annualTot)
 
 * Create country's share for the year
-g countryShare = culmTotal2013/grandTot
+g double countryShare = culmTotal2013/grandTot
 la var countryShare "Country's annual share of its total value (within)"
 
 * Create country's share for it's own history
@@ -183,9 +189,33 @@ g yearlyShare = total_2013/annualTot
 la var yearlyShare "Country's annual share of overall value for year (between)"
 
 * Create country's overall share of total pot
-egen overallTotal = total(total_2013)
+egen double overallTotal = total(total_2013)
 g overallShare = grandTot/overallTotal
 
+
+* Create decadal aggregates for each country and region
+*1954-1959
+* 1960 - 1969
+* 1970 - 1979
+* 1980 - 1989
+* 1990 - 1999
+* 2000 - 2009
+* 2010 - 2013
+
+egen double decTotal = total(total_2013) if year>1953 & year<1960, by(iso_num)
+egen double decTotalReg = total(total_2013) if year>1953 & year<1960, by(region)
+la var decTotal "Decadal totals by country"
+la var decTotal "Decadal totals by region"
+
+forvalues i = 1960(10)2010 {
+	egen double tmp`i'T = total(total_2013) if year>=`i' & year<`i'+10, by(iso_num)
+	egen double tmp`i'R = total(total_2013) if year>=`i' & year<`i'+10, by(region)
+	replace decTotal = tmp`i'T if year>=`i' & year<`i'+10
+	replace decTotalReg = tmp`i'R if year>=`i' & year<`i'+10
+	drop tmp`i'T  tmp`i'R
+	}
+*end
+	
 * Check to make sure everything is summing to 1
 assert countryShare==1 | countryShare==. if year==2013
 order ln*, last
@@ -218,6 +248,16 @@ foreach x of local levels {
 	}
 *end
 
+* Collapse a cut of the data for decadal graphs in R
+preserve
+keep if inlist(year, 1959, 1969, 1979, 1989, 1999, 2009, 2013)==1
+keep year country region countryname decTotal decTotalReg
+export delimited using "$pathRin\FFPdata0912.csv", replace
+collapse (mean) decTotalReg , by(year region)
+drop if region==""
+export delimited using "$pathRin\FFPdata0912_Regional.csv", replace
+restore
+
 /* Generate a report of the top 3 values for each year
 preserve
 	keep if rank_total_check <=5
@@ -235,9 +275,12 @@ preserve
 	export excel using "$pathxls/FFP_outliers.xls", sheet("Totals_Different") firstrow(variables) sheetmodify
 restore
 */
-	
-* Export a copy of the data to R for playing in GGplot anad GGVIS
+compress
+
+* Export a copy of the data to R for playing in GGplot and GGVIS
 save "$pathout/FTF_processed.dta", replace 
 saveold "$pathout/FTF_processed.dta", replace
 
-export delimited using "$pathout\FFPdata0905.csv", delimiter(tab) replace
+export delimited using "$pathout\FFPdata0912.csv", delimiter(tab) replace
+export delimited using "$pathPdrive\Dataout\FFPdata0912.csv", delimiter(tab) replace
+
