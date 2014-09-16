@@ -38,6 +38,8 @@ replace iso_num = 654 if country == "St. Helena"
 replace iso_alpha3 = "SHN" if country== "St. Helena"
 replace iso_alpha2 = "SH" if country == "St. Helena"
 
+replace region="ASIA" if regexm(country, "(Macau|Hong Kong)")==1
+replace region="AFRICA" if regexm(country, "(St. Helena)")==1
 
 * Fix Ireland
 replace objectid = 9902 if country == "Ireland"
@@ -192,7 +194,6 @@ la var yearlyShare "Country's annual share of overall value for year (between)"
 egen double overallTotal = total(total_2013)
 g overallShare = grandTot/overallTotal
 
-
 * Create decadal aggregates for each country and region
 *1954-1959
 * 1960 - 1969
@@ -283,4 +284,7 @@ saveold "$pathout/FTF_processed.dta", replace
 
 export delimited using "$pathout\FFPdata0912.csv", delimiter(tab) replace
 export delimited using "$pathPdrive\Dataout\FFPdata0912.csv", delimiter(tab) replace
+
+collapse (sum) decTotal if inlist(year, 1959, 1969, 1979, 1989, 1999, 2009, 2013), by(region year)
+export delimited using "$pathRin\FFPdata0912_RegionTotals.csv", replace
 
