@@ -30,6 +30,8 @@ names(d)
 
 d$Food.Aid <- round(d$decTotal/1000000, 0)
 
+# d$Food.Aid <- format(d$tot.thous, big.mark=",", scientific=F)
+
 # Subset data into years
 dsub <- subset(d, subset=year==2013 & Food.Aid>0)
 dfif <- subset(d, subset=year==1959 & Food.Aid>0)
@@ -40,7 +42,12 @@ dnin <- subset(d, subset=year==1999 & Food.Aid>0)
 dzer <- subset(d, subset=year==2009 & Food.Aid>0)
       
 
-# Create a function to keep top X records; z controls graphic title -- linked to x input.
+# Create a function to keep top N records;
+# x = input parameter, should be the data frame for each decade
+# y = input parameter, controls how many countries are retained for each graph
+# z = input paramenter (text), title of the graph
+# z = input paramenter (text), name of the file/graph when saved. Results are written to working directory
+
 myBar <- function(x, y, z, a) {
   dplot <- head(arrange(x, desc(Food.Aid)), n = y) 
   c <- ggplot(dplot, aes(x = reorder(factor(country), Food.Aid), 
@@ -56,19 +63,19 @@ myBar <- function(x, y, z, a) {
   ggsave(pp, filename = paste(a, ".png"), width=7.5, height=5.5)
 }
 
+# Call function with appropriate paramenters for each decade
 num <- c(10)
-myBar(dfif, num, "Food Assistance Top Receipients: 1954-1959", "fifties")
-myBar(dsix, num, "Food Assistance Top Receipients: 1960-1969", "sixties")
-myBar(dsev, num, "Food Assistance Top Receipients: 1970-1979", "seventies")
-myBar(degt, num, "Food Assistance Top Receipients: 1980-1989", "eighties")
-myBar(dnin, num, "Food Assistance Top Receipients: 1990-1999", "nineties")
-myBar(dzer, num, "Food Assistance Top Receipients: 2000-2009", "thous")
-myBar(dsub, num, "Food Assistance Top Receipients: 2009-2013", "thousten")
+myBar(dfif, num, "Food Assistance Top Recipients: 1954-1959", "fifties")
+myBar(dsix, num, "Food Assistance Top Recipients: 1960-1969", "sixties")
+myBar(dsev, num, "Food Assistance Top Recipients: 1970-1979", "seventies")
+myBar(degt, num, "Food Assistance Top Recipients: 1980-1989", "eighties")
+myBar(dnin, num, "Food Assistance Top Recipients: 1990-1999", "nineties")
+myBar(dzer, num, "Food Assistance Top Recipients: 2000-2009", "thous")
+myBar(dsub, num, "Food Assistance Top Recipients: 2009-2013", "thousten")
 
 ### Bring in regional data
-
 dd <- read.csv("FFPdata0912_RegionTotals.csv", sep = ",", header = TRUE)
-dd$Food.Aid.R <- round(dd$decTotal/1000000, 0)
+dd$Food.Aid.R <- round(dd$decTotal/1000000, 0) # Round to nearest million
 
 dsub <- subset(dd, subset=year==2013)
 dfif <- subset(dd, subset=year==1959)
@@ -78,7 +85,7 @@ degt <- subset(dd, subset=year==1989)
 dnin <- subset(dd, subset=year==1999)
 dzer <- subset(dd, subset=year==2009)
 
-# Create a function for regions
+# Create a function for regions (similar to the one above but no y input)
 myReg <- function(x, z, a) {
   p <- ggplot(x , aes(x = reorder(factor(region), Food.Aid.R), 
                       y = Food.Aid.R, fill = "region")) + geom_bar(stat = "identity") + scale_fill_manual(values = dblueL )
@@ -121,7 +128,6 @@ grandD$decTotal.sumR <- round(grandD$decTotal.sum/1000000, 0)
   print(pp)
   ggsave(pp, filename = paste("GrandTot", ".png"), width=7.5, height=5.5)
 
-
 # Calculate total Aggregates for countries
 summaryBy(decTotal ~ country, data = d, FUN = sum)
 countryTot <- as.data.frame(summaryBy(decTotal ~ country, data = d, FUN = sum))
@@ -140,6 +146,9 @@ countryTot$decTotal.sumD <- round(countryTot$decTotal.sum/1000000, 0)
     scale_y_continuous(labels = dollar ) 
   print(d)
   ggsave(d, filename = paste("CountryTot", ".png"), width=7.5, height=5.5)
+
+
+## EXTRA CODE (unused) ##
 
 # Basic treemap function to call with subsetted data above
 myTree <- function(x) {	
