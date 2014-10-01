@@ -76,13 +76,6 @@ replace countrycode = "YU" if Yugoslavia == 1
 g byte notYugo = regexm(country, "(SERBIA|CROATIA|MACEDONIA|BOSNIA AND HERZEGOVINA|KOSOVO|MONTENEGRO|SLOVENIA)") ==1 & year<1992
 g byte oldYugo = regexm(country, "(SERBIA|CROATIA|MACEDONIA|BOSNIA AND HERZEGOVINA|KOSOVO|MONTENEGRO|SLOVENIA)") == 1 
 
-* Fix values for Brazil 1980, Saint Lucia 1985, Republic of the Congo 1983, Uganda 1965 and Comoros 1983
-replace title_ii_em = 876000 if countryname == "Brazil" & year == 1980
-replace title_ii_em = 927000 if countryname == "Saint Lucia" & year == 1985
-replace title_ii_em = 155000 if countryname == "Uganda" & year == 1965
-replace title_ii_em = 394000 if countryname == "Comoros" & year == 1983
-replace title_ii_em = 25000 if countryname == "Republic Of The Congo" & year == 1983
-
 * Reset all values to zero if 
 local reset	title_i title_ii_em title_ii_dev title_iii title_iv b lrp_pilot mcg_dole beht_fswr ffp total
 foreach x of local reset {
@@ -91,14 +84,12 @@ foreach x of local reset {
 	}
 * //  
 
-* Verfiy that all other figures match total
-egen double total_check = rowtotal(title_i title_ii_em title_ii_dev title_iii title_iv b lrp_pilot mcg_dole beht_fswr ffp), mi
-format total_check %16.0gc
-labgen2 byte total_valid "Total aggregates that match" = (total == total_check) if total!=. & total_check!=.
-
-* Tabulate data and check mis-validated totals
-tab total_valid, mi
-drop if total_valid==.
+* Fix values for Brazil 1980, Saint Lucia 1985, Republic of the Congo 1983, Uganda 1965 and Comoros 1983
+replace title_ii_em = 876000 if countryname == "Brazil" & year == 1980
+replace title_ii_em = 927000 if countryname == "Saint Lucia" & year == 1985
+replace title_ii_em = 155000 if countryname == "Uganda" & year == 1965
+replace title_ii_em = 394000 if countryname == "Comoros" & year == 1983
+replace title_ii_em = 25000 if countryname == "Republic Of The Congo" & year == 1983
 
 * Create variable labels for different titles
 la var title_i "Title I: Economic Assistance and Food Security"
@@ -112,8 +103,7 @@ la var mcg_dole "McGovern-Dole International Food for Education and Child Nutrit
 la var beht_fswr "Title V: John Ogonowski and Doug Bereuter Farmer-to-Farmer (F2F) Program"
 la var ffp "Food for Peace"
 
-* For now drop missing ISO records
-drop if iso_num ==.
+* Check for duplicates in ISO & year variable
 bysort iso_num year: gen id = _n
 
 /* Countries with duplicate information
@@ -140,6 +130,27 @@ foreach x of numlist 368 690 780 {
 *end
 
 isid iso_num year
+
+* Merge in additional data collected by BFS.
+merge 1:1 iso_num yer using "$pathin\extra_assistance.dta"
+
+
+
+
+
+* Verfiy that all other figures match total
+egen double total_check = rowtotal(title_i title_ii_em title_ii_dev title_iii title_iv b lrp_pilot mcg_dole beht_fswr ffp), mi
+format total_check %16.0gc
+labgen2 byte total_valid "Total aggregates that match" = (total == total_check) if total!=. & total_check!=.
+
+* Tabulate data and check mis-validated totals
+tab total_valid, mi
+drop if total_valid==.
+
+
+
+
+
 
 * Create ranks for all spending
 local titles title_i title_ii_em title_ii_dev title_iii title_iv b lrp_pilot mcg_dole ffp total total_check 
