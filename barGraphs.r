@@ -1,10 +1,10 @@
 # Clear workspace
 rm(list=ls())
 
-# TODO: write function to check if libraries exist, if not go out and install from CRAN.
-# Check if the required libraries exist, if not install them 
+# Define a vector of required libraries.
 required_lib =c("ggplot2","dlpyr","treemap", "RColorBrewer", "scales", "doBy", "devtools")
 
+# Create a function to check if libraries above exist, if not go and fetch them.
 install_required_libs<-function(){
   for(i in 1:length(required_lib)){
     if(required_lib[i] %in% rownames(installed.packages()) == FALSE)
@@ -12,6 +12,7 @@ install_required_libs<-function(){
   }
 }
 
+# Execute the function above.
 install_required_libs()
 
 # Load required libraries
