@@ -1,13 +1,21 @@
 # Clear workspace
 rm(list=ls())
 
-# load libraries
-library(ggplot2)
-library(dplyr)
-library(treemap)
-library(RColorBrewer)
-library(scales)
-library(doBy)
+# TODO: write function to check if libraries exist, if not go out and install from CRAN.
+# Check if the required libraries exist, if not install them 
+required_lib =c("ggplot2","dlpyr","treemap", "RColorBrewer", "scales", "doBy", "devtools")
+
+install_required_libs<-function(){
+  for(i in 1:length(required_lib)){
+    if(required_lib[i] %in% rownames(installed.packages()) == FALSE)
+    {install.packages(required_lib[i])}
+  }
+}
+
+install_required_libs()
+
+# Load required libraries
+lapply(required_lib, require, character.only=T)
 
 # Install trebuchet font to be used
 #library(devtools)
@@ -23,8 +31,14 @@ lblueL 	<- c("#7090B7")
 dblueL 	<- c("#003359")
 lgrayL	<- c("#CECFCB")
 
-setwd("U:/FoodForPeace/R/")
-# setwd("C:/Users/t/Box Sync/FoodForPeace/R/")
+# Set local working directory (pick from U drive, Home drive, or P drive).
+locwd <- c("U:/FoodForPeace/R/")
+homewd <- c("C:/Users/t/Box Sync/FoodForPeace/R/")
+pdrwd <- c("P:/GeoCenter/GIS/Projects/FoodForPeace/R")
+setwd(pdrwd)
+getwd()
+
+# Load data in data frame named d
 d <- read.csv("FFPdata0912.csv", sep = ",", header = TRUE)
 names(d)
 
@@ -40,13 +54,14 @@ dsev <- subset(d, subset=year==1979 & Food.Aid>0)
 degt <- subset(d, subset=year==1989 & Food.Aid>0)
 dnin <- subset(d, subset=year==1999 & Food.Aid>0)
 dzer <- subset(d, subset=year==2009 & Food.Aid>0)
-      
+   
 
 # Create a function to keep top N records;
 # x = input parameter, should be the data frame for each decade
 # y = input parameter, controls how many countries are retained for each graph
 # z = input paramenter (text), title of the graph
 # z = input paramenter (text), name of the file/graph when saved. Results are written to working directory
+## NOTE: All graphics are currently set to write to the R folder. May want to change this in the future.
 
 myBar <- function(x, y, z, a) {
   dplot <- head(arrange(x, desc(Food.Aid)), n = y) 
