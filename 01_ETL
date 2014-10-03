@@ -131,41 +131,46 @@ foreach x of numlist 368 690 780 {
 
 isid iso_num year
 
+* fill in missing country names
+replace countryname = country if countryname==""
+
 * Merge in additional data collected by BFS.
-merge 1:1 iso_num yer using "$pathin\extra_assistance.dta"
+merge 1:1 iso_num year using "$pathin\extra_assistance.dta"
+drop _merge
 
-
-
-
+* Get rid of all the zeros to ensure that any averages are not distored by 0
+foreach x of varlist title_i title_ii_em title_ii_dev title_iii title_iv b lrp_pilot mcg_dole beht_fswr ffp total CDF EFSP OCO {
+	replace `x' = . if `x' == 0
+}
+*end
 
 * Verfiy that all other figures match total
-egen double total_check = rowtotal(title_i title_ii_em title_ii_dev title_iii title_iv b lrp_pilot mcg_dole beht_fswr ffp), mi
+egen double total_check = rowtotal(title_i title_ii_em title_ii_dev title_iii title_iv b lrp_pilot mcg_dole beht_fswr ffp CDF EFSP OCO), mi
 format total_check %16.0gc
 labgen2 byte total_valid "Total aggregates that match" = (total == total_check) if total!=. & total_check!=.
+replace total = total_check if total_valid==0
+
 
 * Tabulate data and check mis-validated totals
 tab total_valid, mi
 drop if total_valid==.
 
 
-
-
-
-
 * Create ranks for all spending
-local titles title_i title_ii_em title_ii_dev title_iii title_iv b lrp_pilot mcg_dole ffp total total_check 
+local titles title_i title_ii_em title_ii_dev title_iii title_iv b lrp_pilot mcg_dole ffp total total_check CDF EFSP OCO
 foreach x of local titles  {
 	egen rank_`x' = rank(`x'), by(year) f
 }
 *end
 set more on
-local titles title_i title_ii_em title_ii_dev title_iii title_iv b lrp_pilot mcg_dole ffp total total_check
+local titles title_i title_ii_em title_ii_dev title_iii title_iv b lrp_pilot mcg_dole ffp total total_check CDF EFSP OCO
 qui foreach x of local titles {
 	*scatter `x' year if rank_`x' == 1, mlabel(countryname) title("`x'") scheme(burd9)
 	*more
 	}
 *
 merge m:m year using "$pathin\cpi.dta"
+drop if _merge==2
 	
 *Create adjusted figures to 2013 Dollars
 local titles title_i title_ii_em title_ii_dev title_iii title_iv b lrp_pilot mcg_dole ffp total total_check 
@@ -264,10 +269,10 @@ foreach x of local levels {
 preserve
 keep if inlist(year, 1959, 1969, 1979, 1989, 1999, 2009, 2013)==1
 keep year country region countryname decTotal decTotalReg
-export delimited using "$pathRin\FFPdata0912.csv", replace
+export delimited using "$pathRin\FFPdata1003.csv", replace
 collapse (mean) decTotalReg , by(year region)
 drop if region==""
-export delimited using "$pathRin\FFPdata0912_Regional.csv", replace
+export delimited using "$pathRin\FFPdata1003_Regional.csv", replace
 restore
 
 /* Generate a report of the top 3 values for each year
@@ -293,9 +298,9 @@ compress
 save "$pathout/FTF_processed.dta", replace 
 saveold "$pathout/FTF_processed.dta", replace
 
-export delimited using "$pathout\FFPdata0912.csv", delimiter(tab) replace
-export delimited using "$pathPdrive\Dataout\FFPdata0912.csv", delimiter(tab) replace
+export delimited using "$pathout\FFPdata1003.csv", delimiter(tab) replace
+export delimited using "$pathPdrive\Dataout\FFPdata1003.csv", delimiter(tab) replace
 
 collapse (sum) decTotal if inlist(year, 1959, 1969, 1979, 1989, 1999, 2009, 2013), by(region year)
-export delimited using "$pathRin\FFPdata0912_RegionTotals.csv", replace
+export delimited using "$pathRin\FFPdata1003_RegionTotals.csv", replace
 
