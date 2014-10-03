@@ -1,10 +1,10 @@
 # Clear workspace
 rm(list=ls())
 
-# Define a vector of required libraries.
-required_lib =c("ggplot2","dlpyr","treemap", "RColorBrewer", "scales", "doBy", "devtools")
+# TODO: write function to check if libraries exist, if not go out and install from CRAN.
+# Check if the required libraries exist, if not install them 
+required_lib =c("ggplot2","dplyr","treemap", "RColorBrewer", "scales", "doBy", "devtools")
 
-# Create a function to check if libraries above exist, if not go and fetch them.
 install_required_libs<-function(){
   for(i in 1:length(required_lib)){
     if(required_lib[i] %in% rownames(installed.packages()) == FALSE)
@@ -12,7 +12,6 @@ install_required_libs<-function(){
   }
 }
 
-# Execute the function above.
 install_required_libs()
 
 # Load required libraries
@@ -62,7 +61,6 @@ dzer <- subset(d, subset=year==2009 & Food.Aid>0)
 # y = input parameter, controls how many countries are retained for each graph
 # z = input paramenter (text), title of the graph
 # z = input paramenter (text), name of the file/graph when saved. Results are written to working directory
-## NOTE: All graphics are currently set to write to the R folder. May want to change this in the future.
 
 myBar <- function(x, y, z, a) {
   dplot <- head(arrange(x, desc(Food.Aid)), n = y) 
