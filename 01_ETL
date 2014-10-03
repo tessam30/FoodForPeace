@@ -239,7 +239,7 @@ order ln*, last
 
 * Create ranks for all logged spending
 local titles title_i title_ii_em title_ii_dev title_iii title_iv b lrp_pilot mcg_dole ffp total total_check 
-foreach x of local titles  {
+qui foreach x of local titles  {
 	egen rank_ln`x' = rank(ln`x'_2013), by(year) f
 }
 *end
@@ -257,7 +257,7 @@ xtset countryid year
 
 set more on
 levelsof region, local(levels)
-foreach x of local levels {
+qui foreach x of local levels {
 	xtline countryShare if region=="`x'", tlabel(#3) i(countryname) t(year)
 	*more
 	*xtline lnculmTotal if region=="`x'", tlabel(#3) i(countryname) t(year)
@@ -267,7 +267,7 @@ foreach x of local levels {
 
 * Collapse a cut of the data for decadal graphs in R
 preserve
-keep if inlist(year, 1959, 1969, 1979, 1989, 1999, 2009, 2013)==1
+keep if inlist(year, 1959, 1969, 1979, 1988, 1999, 2009, 2013)==1
 keep year country region countryname decTotal decTotalReg
 export delimited using "$pathRin\FFPdata1003.csv", replace
 collapse (mean) decTotalReg , by(year region)
@@ -301,6 +301,6 @@ saveold "$pathout/FTF_processed.dta", replace
 export delimited using "$pathout\FFPdata1003.csv", delimiter(tab) replace
 export delimited using "$pathPdrive\Dataout\FFPdata1003.csv", delimiter(tab) replace
 
-collapse (sum) decTotal if inlist(year, 1959, 1969, 1979, 1989, 1999, 2009, 2013), by(region year)
+collapse (sum) decTotal if inlist(year, 1959, 1969, 1979, 1988, 1999, 2009, 2013), by(region year)
 export delimited using "$pathRin\FFPdata1003_RegionTotals.csv", replace
 
