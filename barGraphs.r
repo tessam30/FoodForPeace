@@ -46,7 +46,7 @@ d$Food.Aid <- round(d$decTotal/1000000, 0)
 
 # d$Food.Aid <- format(d$tot.thous, big.mark=",", scientific=F)
 
-# Subset data into years
+# Subset data into years (could use dplyr but use subset for other team members).
 dsub <- subset(d, subset=year==2013 & Food.Aid>0)
 dfif <- subset(d, subset=year==1959 & Food.Aid>0)
 dsix <- subset(d, subset=year==1969 & Food.Aid>0)
